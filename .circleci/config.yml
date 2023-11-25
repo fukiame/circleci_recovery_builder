@@ -45,7 +45,7 @@ jobs:
       - checkout
       - when:
           condition:
-            equal: [ test, << pipeline.git.branch >> ]
+            equal: [ build, << pipeline.git.branch >> ]
           steps:
             - run:
                 name: Cleanup
