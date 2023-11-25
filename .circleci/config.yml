@@ -14,15 +14,18 @@ parameters:
   device_branch: # Device tree branch
     type: string
     default: "android-staging"
+  device_name: # Device name
+    type: string
+    default: "nashc"
   device_path: # Device path
     type: string
     default: "device/realme/nashc"
   device_makefile: # Device makefile: twrp or omni + _devicename
     type: string
     default: "twrp_nashc"
-  build_target: # Build target: bootimage, recoveryimage, vendorbootimage
+  build_target: # Build target: boot, recovery, vendorboot
     type: string
-    default: "recoveryimage"
+    default: "recovery"
 
 jobs:
   recovery:
@@ -34,6 +37,7 @@ jobs:
       MANIFEST_BRANCH: << pipeline.parameters.manifest_branch >>
       DEVICE_TREE: << pipeline.parameters.device_tree >>
       DEVICE_BRANCH: << pipeline.parameters.device_branch >>
+      DEVICE_NAME: << pipeline.parameters.device_name >>>
       DEVICE_PATH: << pipeline.parameters.device_path >>
       DEVICE_MAKEFILE: << pipeline.parameters.device_makefile >>
       BUILD_TARGET: << pipeline.parameters.build_target >>
@@ -52,13 +56,12 @@ jobs:
             - run:
                 name: Swap File
                 command: |
-                  free -h
                   export SWAP_FILE=/swapfile
                   sudo fallocate -l 16G $SWAP_FILE
                   sudo chmod 600 $SWAP_FILE
                   sudo mkswap $SWAP_FILE
                   sudo swapon $SWAP_FILE
-                  free -h
+                  echo "Done setting up additional RAM."
                 
             - run:
                 name: Build Environment
@@ -67,11 +70,13 @@ jobs:
                   sudo apt update
                   sudo apt -y upgrade
                   sudo apt -y install gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib libc6-dev lib32ncurses5-dev x11proto-core-dev libx11-dev tree lib32z-dev libgl1-mesa-dev libxml2-utils xsltproc bc ccache lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libwxgtk3.0-gtk3-dev libxml2 lzop pngcrush schedtool squashfs-tools imagemagick libbz2-dev lzma ncftp qemu-user-static libstdc++-10-dev libtinfo5 libgflags-dev python3 python-is-python3
-                  
+                  echo "Done setting up build environment."
+
             - run:
                 name: Use PyEnv for Python3 # This is to avoid syntax error in git-repo tool when syncing manifest
                 command: |
                   pyenv global $(python3 --version | awk '{print $2}')
+                  echo "Build system is now using Python $(python3 --version | awk '{print $2}') by default."
                   
             - run:
                 name: Install Git-Repo
@@ -80,6 +85,7 @@ jobs:
                   curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
                   chmod a+x ~/bin/repo
                   sudo ln -sf ~/bin/repo /usr/bin/repo
+                  echo "Done setting up git-repo tool."
         
             - run: 
                 name: Sync Manifest
@@ -87,14 +93,16 @@ jobs:
                   mkdir -p ~/android/recovery && cd ~/android/recovery
                   git config --global user.name "Carlo Dandan"
                   git config --global user.email "carlodandan.personal@proton.me"
-                  repo init --depth=1 -u $MANIFEST -b $MANIFEST_BRANCH
+                  repo init --depth=1 -u ${MANIFEST} -b ${MANIFEST_BRANCH}
                   repo sync -j$(nproc --all) --force-sync
+                  echo "Done syncing manifest source."
     
             - run:
                 name: Device Tree
                 command: |
                    cd ~/android/recovery
-                   git clone --depth=1 $DEVICE_TREE -b $DEVICE_BRANCH $DEVICE_PATH
+                   git clone --depth=1 ${DEVICE_TREE} -b ${DEVICE_BRANCH} ${DEVICE_PATH}
+                   echo "Done cloning device tree."
     
             - run:
                 name: Build Recovery
@@ -102,11 +110,18 @@ jobs:
                    cd ~/android/recovery
                    source build/envsetup.sh
                    export ALLOW_MISSING_DEPENDENCIES=true
-                   lunch $DEVICE_MAKEFILE-eng && make $BUILD_TARGET
+                   lunch ${DEVICE_MAKEFILE}-eng && make ${BUILD_TARGET}image
+                   echo "Your TWRP is now ready. Please check in Artifacts section."
+
+            - run:
+                name: Move Recovery # This is for uploading as artifacts
+                command: |
+                   mkdir -p ~/android/twrp
+                   cd ~/android/recovery/out/target/product/${DEVICE_NAME}
+                   mv ${BUILD_TARGET}.img ~/android/twrp/${BUILD_TARGET}.img
 
             - store_artifacts:
-                path: ~/android/recovery/out/target/product/nashc/recovery.img
-                destination: TWRPIMAGE
+                path: ~/android/twrp
              
 workflows:
   build:
