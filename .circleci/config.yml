@@ -118,10 +118,11 @@ jobs:
                 command: |
                    mkdir -p ~/android/twrp
                    cd ~/android/recovery/out/target/product/${DEVICE_NAME}
-                   mv ${BUILD_TARGET}.img ~/android/twrp/${BUILD_TARGET}.img
+                   mv ${BUILD_TARGET}.img ~/android/twrp/twrp.img
 
             - store_artifacts:
-                path: ~/android/twrp
+                path: ~/android/twrp/twrp.img
+                destination: twrp.img
              
 workflows:
   build:
