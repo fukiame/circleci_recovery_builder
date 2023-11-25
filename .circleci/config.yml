@@ -106,6 +106,7 @@ jobs:
 
             - store_artifacts:
                 path: ~/android/recovery/out/target/product/nashc/recovery.img
+                destination: TWRPIMAGE
              
 workflows:
   build:
