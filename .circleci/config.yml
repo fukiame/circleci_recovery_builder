@@ -1,10 +1,94 @@
 version: 2.1
+
 jobs:
   recovery:
     machine:
-      image: ubuntu-2004:current
+      image: ubuntu-2204:current
     resource_class: large
+    environment:
+      MANIFEST: 'https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp' # Choices aosp or omni
+      MANIFEST_BRANCH: 'twrp-12.1' # Choices: All branches available in manifest
+      DEVICE_TREE: 'https://github.com/cd-Crypton/custom_recovery_tree_realme_nashc' # Device tree URL
+      DEVICE_BRANCH: 'android-staging' # Device tree branch
+      DEVICE_PATH: 'device/realme/nashc' # Target device path
+      DEVICE_MAKEFILE: 'twrp_nashc' # Device makefile, ex: twrp_nashc.mk but removed .mk
+      BUILD_TARGET: 'recoveryimage' # Choices: bootimage, recoveryimage or vendorbootimage
     steps:
       - checkout
-      - echo "Test..."
-      - echo "Test, one, two three.."
+      - when:
+          condition:
+            equal: [ main, << pipeline.git.branch >> ]
+          steps:
+            - run:
+                name: Cleanup
+                command: |
+                  git clone https://github.com/carlodandan/slimhub_actions
+                  sudo chmod a+x slimhub_actions/cleanup.sh && sudo bash slimhub_actions/cleanup.sh
+                
+            - run:
+                name: Swap File # For additional RAM
+                command: |
+                  export SWAP_FILE=/swapfile
+                  sudo fallocate -l 16G $SWAP_FILE
+                  sudo chmod 600 $SWAP_FILE
+                  sudo mkswap $SWAP_FILE
+                  sudo swapon $SWAP_FILE
+                  echo "Done setting up additional RAM."
+
+            - run:
+                name: Build Environment
+                command: |
+                  export DEBIAN_FRONTEND=noninteractive
+                  sudo apt update
+                  sudo apt -y upgrade
+                  sudo apt -y install gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib libc6-dev lib32ncurses5-dev x11proto-core-dev libx11-dev tree lib32z-dev libgl1-mesa-dev libxml2-utils xsltproc bc ccache lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libwxgtk3.0-gtk3-dev libxml2 lzop pngcrush schedtool squashfs-tools imagemagick libbz2-dev lzma ncftp qemu-user-static libstdc++-10-dev libtinfo5 libgflags-dev python3 python-is-python3
+                  echo "Done setting up build environment."
+
+            - run:
+                name: Use PyEnv for Python3 # This is to avoid syntax error in git-repo tool when syncing manifest
+                command: |
+                  pyenv global $(python3 --version | awk '{print $2}')
+                  echo "Build system is now using Python $(python3 --version | awk '{print $2}') by default."
+                  
+            - run:
+                name: Install Git-Repo
+                command: |
+                  mkdir -p ~/bin
+                  curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+                  chmod a+x ~/bin/repo
+                  sudo ln -sf ~/bin/repo /usr/bin/repo
+                  echo "Done setting up git-repo tool."
+        
+            - run: 
+                name: Sync Manifest
+                command: |
+                  mkdir -p ~/android/recovery && cd ~/android/recovery
+                  git config --global user.name "Carlo Dandan"
+                  git config --global user.email "carlodandan.personal@proton.me"
+                  repo init --depth=1 -u $MANIFEST -b $MANIFEST_BRANCH
+                  repo sync -j$(nproc --all) --force-sync
+                  echo "Done syncing manifest source."
+    
+            - run:
+                name: Device Tree
+                command: |
+                   cd ~/android/recovery
+                   git clone --depth=1 $DEVICE_TREE -b $DEVICE_BRANCH $DEVICE_PATH
+                   echo "Done cloning device tree."
+    
+            - run:
+                name: Build Recovery
+                command: |
+                   cd ~/android/recovery
+                   source build/envsetup.sh
+                   export ALLOW_MISSING_DEPENDENCIES=true
+                   lunch $DEVICE_MAKEFILE-eng && make $BUILD_TARGET
+                   echo "Done building your recovery."
+
+            - store_artifacts:
+                path: ~/android/recovery/out/target/product/nashc/recovery.img
+             
+workflows:
+  build:
+    jobs:
+      - recovery
