@@ -23,9 +23,9 @@ parameters:
   device_makefile: # Device makefile: twrp or omni + _devicename
     type: string
     default: "twrp_nashc"
-  build_target: # Build target: bootimage, recoveryimage, vendorbootimage
+  build_target: # Build target: boot, recovery, vendorboot
     type: string
-    default: "recoveryimage"
+    default: "recovery"
 
 jobs:
   recovery:
@@ -37,7 +37,7 @@ jobs:
       MANIFEST_BRANCH: << pipeline.parameters.manifest_branch >>
       DEVICE_TREE: << pipeline.parameters.device_tree >>
       DEVICE_BRANCH: << pipeline.parameters.device_branch >>
-      DEVICE_NAME: << pipeline.parameters.device_name >>>
+      DEVICE_NAME: << pipeline.parameters.device_name >>
       DEVICE_PATH: << pipeline.parameters.device_path >>
       DEVICE_MAKEFILE: << pipeline.parameters.device_makefile >>
       BUILD_TARGET: << pipeline.parameters.build_target >>
@@ -45,7 +45,7 @@ jobs:
       - checkout
       - when:
           condition:
-            equal: [ build, << pipeline.git.branch >> ]
+            equal: [ main, << pipeline.git.branch >> ]
           steps:
             - run:
                 name: Cleanup
@@ -110,12 +110,19 @@ jobs:
                    cd ~/android/recovery
                    source build/envsetup.sh
                    export ALLOW_MISSING_DEPENDENCIES=true
-                   lunch ${DEVICE_MAKEFILE}-eng && make ${BUILD_TARGET}
+                   lunch ${DEVICE_MAKEFILE}-eng && make ${BUILD_TARGET}image
                    echo "Your TWRP is now ready. Please check in Artifacts section."
 
+            - run:
+                name: Move Recovery # This is for uploading as artifacts
+                command: |
+                   mkdir -p ~/android/twrp
+                   cd ~/android/recovery/out/target/product/${DEVICE_NAME}
+                   mv ${BUILD_TARGET}.img ~/android/twrp/twrp.img
+
             - store_artifacts:
-                path: ~/android/recovery/out/target/product/${DEVICE_NAME}/recovery.img
-                destination: twrp-3.7.0_12.1-${DEVICE_NAME}-unofficial.img
+                path: ~/android/twrp/twrp.img
+                destination: twrp.img
              
 workflows:
   build:
