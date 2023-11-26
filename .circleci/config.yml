@@ -37,7 +37,7 @@ jobs:
       MANIFEST_BRANCH: << pipeline.parameters.manifest_branch >>
       DEVICE_TREE: << pipeline.parameters.device_tree >>
       DEVICE_BRANCH: << pipeline.parameters.device_branch >>
-      DEVICE_NAME: << pipeline.parameters.device_name >>>
+      DEVICE_NAME: << pipeline.parameters.device_name >>
       DEVICE_PATH: << pipeline.parameters.device_path >>
       DEVICE_MAKEFILE: << pipeline.parameters.device_makefile >>
       BUILD_TARGET: << pipeline.parameters.build_target >>
