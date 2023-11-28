@@ -118,7 +118,11 @@ jobs:
                 command: |
                    mkdir -p ~/android/twrp
                    cd ~/android/recovery/out/target/product/${DEVICE_NAME}
-                   mv ${BUILD_TARGET}.img ~/android/twrp/twrp.img
+                   if [ "${BUILD_TARGET}" = "vendorboot" ]; then
+                       mv vendor_boot.img ~/android/twrp/twrp.img
+                   else
+                       mv ${BUILD_TARGET}.img ~/android/twrp/twrp.img
+                   fi
 
             - store_artifacts:
                 path: ~/android/twrp/twrp.img
