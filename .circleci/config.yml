@@ -4,25 +4,25 @@ version: 2.1
 parameters:
   manifest: # Minimal manifest URL: AOSP or OMNI
     type: string
-    default: "https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp"
+    default: "https://github.com/HitoriAmeRP/platform_manifest"
   manifest_branch: # Minimal manifest branch: twrp-12.1 and below
     type: string
-    default: "twrp-12.1"
+    default: "android-12.1"
   device_tree: # Device tree URL
     type: string
-    default: "https://github.com/cd-Crypton/custom_recovery_tree_realme_nashc"
+    default: "https://github.com/TelegramAt25/recovery_device_xiaomi_blossom"
   device_branch: # Device tree branch
     type: string
-    default: "android-staging"
+    default: "android-12.1"
   device_name: # Device name
     type: string
-    default: "nashc"
+    default: "blossom"
   device_path: # Device path
     type: string
-    default: "device/realme/nashc"
+    default: "device/xiaomi/blossom"
   device_makefile: # Device makefile: twrp or omni + _devicename
     type: string
-    default: "twrp_nashc"
+    default: "twrp_blossom"
   build_target: # Build target: boot, recovery, vendorboot
     type: string
     default: "recovery"
@@ -116,17 +116,17 @@ jobs:
             - run:
                 name: Move Recovery # This is for uploading as artifacts
                 command: |
-                   mkdir -p ~/android/twrp
+                   mkdir -p ~/android/harp
                    cd ~/android/recovery/out/target/product/${DEVICE_NAME}
                    if [ "${BUILD_TARGET}" = "vendorboot" ]; then
-                       mv vendor_boot.img ~/android/twrp/twrp.img
+                       mv vendor_boot.img ~/android/harp/harp.img
                    else
-                       mv ${BUILD_TARGET}.img ~/android/twrp/twrp.img
+                       mv ${BUILD_TARGET}.img ~/android/harp/harp.img
                    fi
 
             - store_artifacts:
-                path: ~/android/twrp/twrp.img
-                destination: twrp.img
+                path: ~/android/harp/harp.img
+                destination: harp.img
              
 workflows:
   build:
